@@ -11,8 +11,8 @@ dotted-token group (initials, titles, abbreviations). Names where
 nothing meaningful remains are discarded.
 
 Usage:
-    python parse_opr_xml.py                  # reads from ./data/
-    python parse_opr_xml.py /path/to/files/  # reads from given dir
+    python parse-dutch-street-names.py                  # reads from ./data/
+    python parse-dutch-street-names.py /path/to/files/  # reads from given dir
 """
 
 import argparse
@@ -37,9 +37,10 @@ TAG_HIST_VOOR = f"{{{NS_HIST}}}Voorkomen"
 TAG_EIND      = f"{{{NS_HIST}}}eindGeldigheid"
 
 ACTIVE_STATUS = "Naamgeving uitgegeven"
+OUTPUT_DIR    = "output"
 OUTPUT_FILE   = "street_names.txt"
 
-HIGHWAY_RE = re.compile(r"^[AN]\d+", re.IGNORECASE)
+HIGHWAY_RE = re.compile(r"^[ANS]\d+", re.IGNORECASE)
 
 # 's-Foo, 's Foo, 't Foo, 'n Foo
 DUTCH_ARTICLE_RE = re.compile(r"^'[stn]-?\s*", re.IGNORECASE)
@@ -68,7 +69,7 @@ def clean(naam: str) -> str:
 def is_invalid(naam: str) -> bool:
     if HIGHWAY_RE.match(naam):
         return True
-    if naam.lower().startswith("rijksweg"):
+    if naam.lower().startswith(("rijksweg", "autosnelweg", "autoweg")):
         return True
     if naam.startswith("-"):
         return True
@@ -154,11 +155,14 @@ def main():
 
     removed = len(names) - len(merged)
 
+    output_dir = Path(OUTPUT_DIR)
+    output_dir.mkdir(exist_ok=True)
+
     if args.top:
-        output_file = f"street_names_top{args.top}.txt"
+        output_file = output_dir / f"street_names_top{args.top}.txt"
         ordered = [name for name, _ in merged.most_common(args.top)]
     else:
-        output_file = OUTPUT_FILE
+        output_file = output_dir / OUTPUT_FILE
         ordered = sorted(merged)
 
     print(f"\nWriting {len(ordered)} street names to {output_file} "
