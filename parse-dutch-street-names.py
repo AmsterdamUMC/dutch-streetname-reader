@@ -3,18 +3,20 @@ Parses BAG OPR (OpenbareRuimte) XML extract files and writes
 a deduplicated list of active Dutch street names (type Weg only),
 one per line, for use in the org-security-scanner PII detection.
 
-Names are kept in full (no voorvoegsel/prefix stripping) — all words are
-preserved — but punctuation is normalized to match how org-security-scanner's
-ripgrep engine tokenizes words (letters/digits only, with internal -/'
-between groups, no periods, no leading apostrophe). Without this, names
-like "St. Annastraat" or "'s-Gravenhage" would never match the scanned
-text, since the scanner compares the literal (lowercased) list entry
-against the space-joined tokens it extracts — see WORD_TOKEN_RE below,
-which mirrors scripts/scan.py's _WORD_TOKEN in org-security-scanner.
+Names are kept in full (no voorvoegsel/prefix stripping as separate
+content) but are normalized to match how the actually-used matcher -
+personal_info.py's word_token in org-security-workflows - tokenizes
+words: letters only, with internal -/' between groups, no periods, no
+leading apostrophe, no digits anywhere. Without this, names like
+"St. Annastraat", "'s-Gravenhage", or "12e Septemberlaan" would never
+match scanned text, since that matcher compares the literal
+(lowercased) list entry against the space-joined tokens it extracts —
+see WORD_TOKEN_RE below.
 
 Excludes highway-style names (A10, A 15, N201, Rijksweg + number),
-single-letter names, and data artefacts (names starting with - or
-unusual quote characters).
+1-2 letter names (too short to mean anything, guaranteed false
+positives), and data artefacts (names starting with - or unusual quote
+characters).
 
 Usage:
     python parse-dutch-street-names.py                  # reads from ./data/
@@ -83,8 +85,6 @@ def is_invalid(naam: str) -> bool:
         return True
     if "rijksweg" in naam.lower() and any(c.isdigit() for c in naam):
         return True
-    if len(naam) == 1:
-        return True
     if naam.startswith("-"):
         return True
     if naam.startswith("'") and naam[1:2].lower() not in ("s", "t", "n"):
@@ -121,7 +121,10 @@ def parse_file(filepath: str, names: Counter) -> int:
             continue
 
         naam = normalize(naam)
-        if naam:
+        # Re-check length after normalization: digit-stripping can reduce
+        # something like "GP100" (a parcel code, not a real street) down
+        # to "GP" - too short to mean anything once the digits are gone.
+        if naam and len(naam) > 2:
             names[naam] += 1
             count += 1
 
