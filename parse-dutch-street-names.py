@@ -3,12 +3,18 @@ Parses BAG OPR (OpenbareRuimte) XML extract files and writes
 a deduplicated list of active Dutch street names (type Weg only),
 one per line, for use in the org-security-scanner PII detection.
 
-Excludes highway-style names (A10, N201, Rijksweg) and data artefacts
-(names starting with - or unusual quote characters).
+Names are kept in full (no voorvoegsel/prefix stripping) — all words are
+preserved — but punctuation is normalized to match how org-security-scanner's
+ripgrep engine tokenizes words (letters/digits only, with internal -/'
+between groups, no periods, no leading apostrophe). Without this, names
+like "St. Annastraat" or "'s-Gravenhage" would never match the scanned
+text, since the scanner compares the literal (lowercased) list entry
+against the space-joined tokens it extracts — see WORD_TOKEN_RE below,
+which mirrors scripts/scan.py's _WORD_TOKEN in org-security-scanner.
 
-For names containing a dot, extracts only the part after the last
-dotted-token group (initials, titles, abbreviations). Names where
-nothing meaningful remains are discarded.
+Excludes highway-style names (A10, A 15, N201, Rijksweg + number),
+single-letter names, and data artefacts (names starting with - or
+unusual quote characters).
 
 Usage:
     python parse-dutch-street-names.py                  # reads from ./data/
@@ -40,36 +46,44 @@ ACTIVE_STATUS = "Naamgeving uitgegeven"
 OUTPUT_DIR    = "output"
 OUTPUT_FILE   = "street_names.txt"
 
-HIGHWAY_RE = re.compile(r"^[ANS]\d+", re.IGNORECASE)
+# A highway code token, e.g. "A15", "A 15", "A-15", "N281", "S15",
+# matched anywhere in the name (word-boundary-safe) to catch both
+# bare highway names and names that merely reference one, e.g.
+# "A 73 Rijksweg" or "Staphorst Rijksweg A28".
+HIGHWAY_CODE_RE = re.compile(r"(?<![A-Za-z0-9])[ANS][\s-]?\d{1,3}(?![A-Za-z0-9])")
 
-# 's-Foo, 's Foo, 't Foo, 'n Foo
-DUTCH_ARTICLE_RE = re.compile(r"^'[stn]-?\s*", re.IGNORECASE)
+# Mirrors personal_info.py's word_token (org-security-workflows, the
+# actually-used matcher): letter runs only, with an internal - or '
+# allowed to join two such runs (e.g. "'s-Gravenhage" -> "s-Gravenhage",
+# "Nieuw-Vennep" stays whole). A leading apostrophe or any period is
+# never part of a token, so both are dropped.
+#
+# Digits are excluded on purpose, same as the real matcher: house
+# numbers are matched separately there, so a digit anywhere in a name
+# (leading ordinal like "12e", a plot number like "Archipel 10") can
+# never be part of what actually gets matched against scanned text -
+# keeping it in the stored name would just make the entry match nothing.
+# normalize() drops it the same way the real matcher's tokenizer would,
+# e.g. "12e Septemberlaan" -> "e Septemberlaan", "Archipel 10" ->
+# "Archipel", "Apollo 11-laan" -> "Apollo laan". The matcher works on
+# the filtered token sequence (digits already removed), not the raw
+# text, so "Apollo laan" still matches "Apollo 11-laan" in a scanned
+# file - "Apollo" and "laan" end up adjacent in that sequence.
+WORD_TOKEN_RE = re.compile(r"[^\W\d_]+(?:[-'][^\W\d_]+)*", re.UNICODE)
 
-# A dotted-token group: one or more sequences of 1-4 letters + dot + optional space
-# Used to find the last such group in a name and take what follows.
-LAST_DOTTED_RE = re.compile(r"(?:[A-Za-z]{1,4}\.\s*)+")
 
-
-def clean(naam: str) -> str:
-    # Strip Dutch articles
-    naam = DUTCH_ARTICLE_RE.sub("", naam).strip()
-
-    # If the name contains a dot, take everything after the last dotted-token group
-    if "." in naam:
-        matches = list(LAST_DOTTED_RE.finditer(naam))
-        if matches:
-            remainder = naam[matches[-1].end():].strip()
-            if not remainder:
-                return ""   # nothing left, will be discarded
-            naam = remainder
-
-    return naam
+def normalize(naam: str) -> str:
+    return " ".join(WORD_TOKEN_RE.findall(naam))
 
 
 def is_invalid(naam: str) -> bool:
-    if HIGHWAY_RE.match(naam):
+    if HIGHWAY_CODE_RE.search(naam):
         return True
     if naam.lower().startswith(("rijksweg", "autosnelweg", "autoweg")):
+        return True
+    if "rijksweg" in naam.lower() and any(c.isdigit() for c in naam):
+        return True
+    if len(naam) == 1:
         return True
     if naam.startswith("-"):
         return True
@@ -106,7 +120,7 @@ def parse_file(filepath: str, names: Counter) -> int:
         if not naam or is_invalid(naam):
             continue
 
-        naam = clean(naam)
+        naam = normalize(naam)
         if naam:
             names[naam] += 1
             count += 1
