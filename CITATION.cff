@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+title: "dutch-streetname-reader"
+abstract: >-
+  Script that extracts Dutch street names from the BAG (Basisregistratie Adressen en Gebouwen) public-space extract published by Kadaster via PDOK, and normalises them into a reference list. The list is used for detecting addresses in the GitHub security infrastructure of the Amsterdam UMC.
+authors:
+  - family-names: "van der Velde"
+    given-names: "Bauke"
+    orcid: "https://orcid.org/0000-0002-0365-3862"
+    affiliation: "Amsterdam UMC"
+  - family-names: "Pronk"
+    given-names: "Thomas"
+    orcid: "https://orcid.org/0000-0001-9334-7190"
+    affiliation: "Amsterdam UMC"
+version: 1.0.0
+# Fill in on release: the DOI reserved on Zenodo for this version, and the release date.
+# doi: 10.5281/zenodo.XXXXXXX
+# date-released: 2026-MM-DD
+license: Apache-2.0
+repository-code: "https://github.com/AmsterdamUMC/dutch-streetname-reader"
+keywords:
+  - "Dutch street names"
+  - "BAG"
+  - "reference data"
+  - "personal information"
+  - "data leak prevention"
+references:
+  - type: report
+    title: "GitHub Security Infrastructure at the Amsterdam UMC"
+    authors:
+      - family-names: "van der Velde"
+        given-names: "Bauke"
+      - family-names: "Pronk"
+        given-names: "Thomas"
+    doi: 10.5281/zenodo.22655794
+  - type: manual
+    title: "Technical Maintenance Guide of GitHub Security Infrastructure at the Amsterdam UMC"
+    authors:
+      - family-names: "van der Velde"
+        given-names: "Bauke"
+      - family-names: "Pronk"
+        given-names: "Thomas"
+    doi: 10.5281/zenodo.22789041
+  - type: database
+    title: "Basisregistratie Adressen en Gebouwen (BAG)"
+    authors:
+      - name: "Kadaster"
+    url: "https://service.pdok.nl/kadaster/bag-adressen/atom/adressen.xml"
