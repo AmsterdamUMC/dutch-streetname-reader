@@ -18,6 +18,12 @@ Excludes highway-style names (A10, A 15, N201, Rijksweg + number),
 positives), and data artefacts (names starting with - or unusual quote
 characters).
 
+Also excludes street names that are common words in English or Dutch,
+such as "As", "Data", "Page" or "Contact". The matcher compares street
+names case-insensitively, so these would match ordinary text in code
+and documentation ("Data 15", "Page 3"). Word frequencies come from the
+wordfreq package; see COMMON_WORD_ZIPF_EN / _NL below.
+
 Usage:
     python parse-dutch-street-names.py                  # reads from ./data/
     python parse-dutch-street-names.py /path/to/files/  # reads from given dir
@@ -25,6 +31,8 @@ Usage:
 
 import argparse
 import re
+
+from wordfreq import zipf_frequency
 import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
@@ -45,6 +53,15 @@ TAG_HIST_VOOR = f"{{{NS_HIST}}}Voorkomen"
 TAG_EIND      = f"{{{NS_HIST}}}eindGeldigheid"
 
 ACTIVE_STATUS = "Naamgeving uitgegeven"
+
+# Street names that are common words are dropped (see is_common_word).
+# Thresholds are on the Zipf scale: 3 is about once per million words,
+# 6 is a very common word such as "as". English is filtered more strictly
+# because scanned code and documentation are mostly English; the Dutch
+# threshold only removes function words ("maar", "meer", "wel"), so real
+# and common street names such as "Markt" or "Dijk" are kept.
+COMMON_WORD_ZIPF_EN = 3.5
+COMMON_WORD_ZIPF_NL = 5.5
 OUTPUT_DIR    = "output"
 OUTPUT_FILE   = "street_names.txt"
 
@@ -76,6 +93,13 @@ WORD_TOKEN_RE = re.compile(r"[^\W\d_]+(?:[-'][^\W\d_]+)*", re.UNICODE)
 
 def normalize(naam: str) -> str:
     return " ".join(WORD_TOKEN_RE.findall(naam))
+
+
+def is_common_word(naam: str) -> bool:
+    """True if the whole (normalized) name is a common English or Dutch word or phrase."""
+    text = naam.lower()
+    return (zipf_frequency(text, "en") >= COMMON_WORD_ZIPF_EN
+            or zipf_frequency(text, "nl") >= COMMON_WORD_ZIPF_NL)
 
 
 def is_invalid(naam: str) -> bool:
@@ -172,6 +196,10 @@ def main():
 
     removed = len(names) - len(merged)
 
+    common = sorted(naam for naam in merged if is_common_word(naam))
+    for naam in common:
+        del merged[naam]
+
     output_dir = Path(OUTPUT_DIR)
     output_dir.mkdir(exist_ok=True)
 
@@ -183,7 +211,8 @@ def main():
         ordered = sorted(merged)
 
     print(f"\nWriting {len(ordered)} street names to {output_file} "
-          f"({removed} suffix variants merged into base names)...")
+          f"({removed} suffix variants merged into base names, "
+          f"{len(common)} common words removed)...")
     with open(output_file, "w", encoding="utf-8") as out:
         out.write("\n".join(ordered) + "\n")
     print("Done.")

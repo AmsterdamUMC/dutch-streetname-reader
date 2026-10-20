@@ -1,6 +1,14 @@
 # Dutch Street Name Extractor
 
-Parses BAG (Basisregistratie Adressen en Gebouwen) OPR (OpenbareRuimte) extract data from PDOK to generate validated street name lists for the org-security-scanner's two-stage PII detection.
+Parses BAG (Basisregistratie Adressen en Gebouwen) OPR (OpenbareRuimte) extract data from PDOK to generate the list of Dutch street names that the GitHub security infrastructure of the Amsterdam UMC uses to detect addresses. The result is committed as `personal-info-lists/common-dutch-streetnames.txt` in [org-security-workflows](https://github.com/AmsterdamUMC/org-security-workflows).
+
+## Requirements
+
+Python 3.9 or newer and the packages in `requirements.txt`:
+
+```bash
+pip install -r requirements.txt
+```
 
 ## Data Setup
 
@@ -37,15 +45,13 @@ The `output/` folder is created automatically if it doesn't exist.
 
 - Parses only active street records (status `Naamgeving uitgegeven`, type `Weg`)
 - Excludes highways (`A##`, `N##`, `S##`, `Rijksweg`, `Autosnelweg`, `Autoweg`)
-- Excludes data artefacts (names starting with dash or containing only punctuation)
-- Normalizes typographic apostrophes and dashes
-- Strips Dutch article prefixes (`'s-`, `'s `, `'t `, `'n `)
-- Removes dotted-prefix groups (`Prof.`, `Dr.`, `v.d.`, etc.) and keeps only the street stem
+- Excludes data artefacts (names starting with a dash or containing unusual quote characters)
+- Normalizes names the same way the detection splits text into words: letters only, with internal hyphens and apostrophes kept; digits, periods and a leading apostrophe are dropped (e.g. `'s-Gravenhage` becomes `s-Gravenhage`, `12e Septemberlaan` becomes `e Septemberlaan`)
+- Excludes names of one or two letters
 - Merges single-letter suffix variants (e.g. `Wethouder Vrankenstraat A` → `Wethouder Vrankenstraat`)
-- Deduplicates and counts occurrences across all municipalities
+- Excludes names that are common English or Dutch words or phrases (such as `As`, `Data`, `Page`, `Contact`), using word frequencies from [wordfreq](https://pypi.org/project/wordfreq/). Street names are matched case-insensitively, so these would otherwise match ordinary text. The thresholds are `COMMON_WORD_ZIPF_EN` and `COMMON_WORD_ZIPF_NL` in the script.
+- Deduplicates and writes one name per line, UTF-8 encoded
 
-Output is a deduplicated list of street name stems, one per line, UTF-8 encoded.
+## Using the output
 
-## Usage in org-security-scanner
-
-Use the generated `.txt` file as a second-pass validator in the scanner's PII detection pipeline: first match a street suffix pattern, then validate the extracted name against this list.
+Copy `output/street_names.txt` to `personal-info-lists/common-dutch-streetnames.txt` in org-security-workflows. The normalization above must stay in step with `word_token` in that repository's `personal_info.py`; see the Technical Maintenance Guide (https://doi.org/10.5281/zenodo.22789041), Section 6.4, for the full procedure.
