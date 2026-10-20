@@ -62,6 +62,19 @@ ACTIVE_STATUS = "Naamgeving uitgegeven"
 # and common street names such as "Markt" or "Dijk" are kept.
 COMMON_WORD_ZIPF_EN = 3.5
 COMMON_WORD_ZIPF_NL = 5.5
+# Stricter thresholds for single-word names ("Plein", "Brug", "Bron",
+# "Standaard"): on their own these are ordinary nouns, and followed by
+# any number ("Bron 1", "Standaard 6") they look like an address.
+SINGLE_WORD_ZIPF_EN = 3.0
+SINGLE_WORD_ZIPF_NL = 4.0
+# Month and weekday names are street names too ("Augustus"), but
+# "augustus 1" is a date, not an address.
+DATE_WORDS = {
+    "januari", "februari", "maart", "april", "mei", "juni", "juli",
+    "augustus", "september", "oktober", "november", "december",
+    "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag",
+    "zaterdag", "zondag",
+}
 OUTPUT_DIR    = "output"
 OUTPUT_FILE   = "street_names.txt"
 
@@ -98,6 +111,11 @@ def normalize(naam: str) -> str:
 def is_common_word(naam: str) -> bool:
     """True if the whole (normalized) name is a common English or Dutch word or phrase."""
     text = naam.lower()
+    if text in DATE_WORDS:
+        return True
+    if " " not in text:
+        return (zipf_frequency(text, "en") >= SINGLE_WORD_ZIPF_EN
+                or zipf_frequency(text, "nl") >= SINGLE_WORD_ZIPF_NL)
     return (zipf_frequency(text, "en") >= COMMON_WORD_ZIPF_EN
             or zipf_frequency(text, "nl") >= COMMON_WORD_ZIPF_NL)
 

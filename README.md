@@ -49,7 +49,7 @@ The `output/` folder is created automatically if it doesn't exist.
 - Normalizes names the same way the detection splits text into words: letters only, with internal hyphens and apostrophes kept; digits, periods and a leading apostrophe are dropped (e.g. `'s-Gravenhage` becomes `s-Gravenhage`, `12e Septemberlaan` becomes `e Septemberlaan`)
 - Excludes names of one or two letters
 - Merges single-letter suffix variants (e.g. `Wethouder Vrankenstraat A` → `Wethouder Vrankenstraat`)
-- Excludes names that are common English or Dutch words or phrases (such as `As`, `Data`, `Page`, `Contact`), using word frequencies from [wordfreq](https://pypi.org/project/wordfreq/). Street names are matched case-insensitively, so these would otherwise match ordinary text. The thresholds are `COMMON_WORD_ZIPF_EN` and `COMMON_WORD_ZIPF_NL` in the script.
+- Excludes names that are common English or Dutch words or phrases (such as `As`, `Data`, `Page`, `Contact`), using word frequencies from [wordfreq](https://pypi.org/project/wordfreq/). Street names are matched case-insensitively, so these would otherwise match ordinary text. Single-word names (such as `Plein`, `Brug`, `Bron`) and month and weekday names are filtered more strictly. The thresholds are the `*_ZIPF_*` constants in the script.
 - Deduplicates and writes one name per line, UTF-8 encoded
 
 ## Using the output
