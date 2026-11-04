@@ -1,5 +1,7 @@
 # Dutch Street Name Extractor
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23918635.svg)](https://doi.org/10.5281/zenodo.23918635)
+
 Parses BAG (Basisregistratie Adressen en Gebouwen) OPR (OpenbareRuimte) extract data from PDOK to generate the list of Dutch street names that the GitHub security infrastructure of the Amsterdam UMC uses to detect addresses. The result is committed as `personal-info-lists/common-dutch-streetnames.txt` in [org-security-workflows](https://github.com/AmsterdamUMC/org-security-workflows).
 
 ## Requirements
